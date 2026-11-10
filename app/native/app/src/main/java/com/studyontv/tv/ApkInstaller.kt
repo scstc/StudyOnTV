@@ -51,7 +51,7 @@ object ApkInstaller {
         return f.exists() && (sizeHint <= 0 || f.length() == sizeHint) && validUpdate(ctx, f)
     }
 
-    /** 依次尝试直连和各个加速镜像，任一线路成功即返回 */
+    /** 下载选定的发行版 APK，并在安装前校验文件和签名。 */
     fun download(ctx: Context, url: String, sha256: String, onSource: (String) -> Unit, onProgress: (Int) -> Unit): File? {
         lastError = ""
         for ((name, candidate) in Updater.downloadCandidates(ctx, url)) {
@@ -70,22 +70,23 @@ object ApkInstaller {
         try {
             conn = (URL(url).openConnection() as HttpURLConnection).apply {
                 connectTimeout = 12000
-                readTimeout = 60000   // 蒲公英 APK 文件大，慢网需要更长时间
+                readTimeout = 60000   // APK 文件大，慢网需要更长时间
                 instanceFollowRedirects = true
-                setRequestProperty("User-Agent", Pgyer.USER_AGENT)
+                setRequestProperty("User-Agent", Updater.USER_AGENT)
                 setRequestProperty("Accept", "*/*")
             }
             // 手动跟随重定向（部分 HTTP→HTTPS 或 302 跳转 HttpURLConnection 不处理）
             var finalConn: HttpURLConnection = conn!!
             var redirectCode = finalConn.responseCode
             var redirectCount = 0
-            while (redirectCode in 301..303 && redirectCount++ < 5) {
+            while (redirectCode in listOf(301, 302, 303, 307, 308) && redirectCount++ < 5) {
                 val loc = finalConn.getHeaderField("Location") ?: break
+                val redirectUrl = URL(finalConn.url, loc)
                 finalConn.disconnect()
-                finalConn = URL(loc).openConnection() as HttpURLConnection
+                finalConn = redirectUrl.openConnection() as HttpURLConnection
                 finalConn.connectTimeout = 12000; finalConn.readTimeout = 60000
                 finalConn.instanceFollowRedirects = true
-                finalConn.setRequestProperty("User-Agent", Pgyer.USER_AGENT)
+                finalConn.setRequestProperty("User-Agent", Updater.USER_AGENT)
                 redirectCode = finalConn.responseCode
             }
             conn = finalConn

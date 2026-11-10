@@ -18,8 +18,8 @@ android {
         applicationId = "com.studyontv.tv"
         minSdk = 21          // Android 5.0
         targetSdk = 34
-        versionCode = 26
-        versionName = "0.3.21"
+        versionCode = 27
+        versionName = "26.4.1.1"
     }
 
     flavorDimensions += "device"
@@ -79,6 +79,8 @@ android {
 dependencies {
     // Bugly 崩溃上报（用户同意后才初始化，见 BuglyInit.kt）
     implementation(files("libs/bugly-crashreport.aar"))
+    testImplementation("junit:junit:4.13.2")
+    testImplementation("org.json:json:20240303")
 }
 
 // 把网页和题库同步进 assets（仓库里只维护 app/web、admin、data/seed.json 三份源）

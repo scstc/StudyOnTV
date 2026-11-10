@@ -7,7 +7,7 @@
 **Learn first. Watch later.** · 支持Android 平板、手机和电视，不需要自建服务器
 
 [![Stars](https://img.shields.io/github/stars/chadyi/StudyOnTV?style=for-the-badge&logo=github&label=Stars)](https://github.com/chadyi/StudyOnTV/stargazers)
-[![Release](https://img.shields.io/github/v/release/chadyi/StudyOnTV?style=for-the-badge&label=Release)](https://github.com/chadyi/StudyOnTV/releases/latest)
+[![Release](https://img.shields.io/github/v/release/scstc/StudyOnTV?style=for-the-badge&label=Release)](https://github.com/scstc/StudyOnTV/releases/latest)
 [![Platform](https://img.shields.io/badge/Android-5.0%2B-3DDC84?style=for-the-badge&logo=android)](https://github.com/chadyi/StudyOnTV)
 [![License](https://img.shields.io/badge/license-Personal%20Use%20Only-orange?style=for-the-badge)](./LICENSE)
 
@@ -19,12 +19,9 @@
 
 Android 平板、手机和电视使用同一套规则，分别安装对应版本：
 
-- [**手机/平板/TV GitHub 下载（首选）**](https://github.com/chadyi/StudyOnTV/releases/latest)
+- [**手机/平板/TV GitHub 下载（首选）**](https://github.com/scstc/StudyOnTV/releases/latest)
 
-如果无法访问 GitHub，可使用蒲公英备用下载：
-
-- **[手机 / 平板版 · 蒲公英备用下载](https://www.pgyer.com/StudyOnTVMobile)**
-- **[TV 版 · 蒲公英备用下载](https://www.pgyer.com/StudyOnTVTV)**
+本分支的 APK 和应用内更新均跟随 `scstc/StudyOnTV` 的 GitHub Release。无法直连时，可用其他设备下载后传入安装。
 
 手机和平板直接下载安装；电视可通过 U 盘或 ADB 安装。首次打开设置管理密码，权限可以按需开启，也可以稍后再设置。
 

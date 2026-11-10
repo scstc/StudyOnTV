@@ -100,9 +100,9 @@ class UpdateActivity : Activity() {
         }
         secondary.addView(TvUi.button(this, "手动下载") {
             try {
-                startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(Pgyer.pageUrl)))
+                startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(Updater.RELEASE_PAGE)))
             } catch (e: Exception) {
-                status.text = "这台设备没有可用浏览器，请用手机或电脑访问 " + Pgyer.pageUrl
+                status.text = "这台设备没有可用浏览器，请用手机或电脑访问 " + Updater.RELEASE_PAGE
                 Diag.error("Update", "cannot open manual download page", e)
             }
         }, LinearLayout.LayoutParams(0, dp(if (tv) 52 else 48), 1f).apply {
@@ -174,7 +174,7 @@ class UpdateActivity : Activity() {
                 } else {
                     button.isEnabled = true
                     button.text = "下载失败，重试"
-                    status.text = (ApkInstaller.lastError.ifEmpty { "下载失败，请检查网络" }) + "。也可以点「手动下载」到蒲公英安装。"
+                    status.text = (ApkInstaller.lastError.ifEmpty { "下载失败，请检查网络" }) + "。也可以点「手动下载」到本仓库发行页安装。"
                     progress?.visibility = View.GONE
                 }
                 button.requestFocus()

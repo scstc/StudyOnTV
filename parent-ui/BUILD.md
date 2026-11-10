@@ -7,7 +7,7 @@
 | TV | `com.studyontv.tv` | `assembleTvRelease` |
 | 手机 / 平板 | `com.studyontv.mobile` | `assembleMobileRelease` |
 
-两者均要求 Android 5.0+。TV 包保留原包名和签名，可以覆盖升级旧 TV 版本。手机和平板版是独立应用，题库与记录各自保存在所在设备，不自动跨包迁移。
+两者均要求 Android 5.0+。同包名且签名一致的版本可以覆盖升级；首次迁移到本仓库版本时需确认签名是否一致。手机和平板版是独立应用，题库与记录各自保存在所在设备，不自动跨包迁移。
 
 ```bash
 cd app/native

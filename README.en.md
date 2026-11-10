@@ -4,9 +4,9 @@ An Android learning and screen-time app for tablets, phones and TVs. Tablets and
 
 This project is linked with and endorses the [LINUX DO](https://linux.do) community.
 
-[Download from GitHub Release](https://github.com/chadyi/StudyOnTV/releases/latest) · [中文说明](./README.md) · [Installation](./docs/install.md)
+[Download from GitHub Release](https://github.com/scstc/StudyOnTV/releases/latest) · [中文说明](./README.md) · [Installation](./docs/install.md)
 
-If GitHub is unavailable, use the Pgyer backup: [Mobile / tablet](https://www.pgyer.com/StudyOnTVMobile) · [TV](https://www.pgyer.com/StudyOnTVTV).
+APKs and in-app updates for this fork follow GitHub Releases in `scstc/StudyOnTV`. If GitHub is unavailable on the device, download on another device and transfer the APK for installation.
 
 ## Learning
 

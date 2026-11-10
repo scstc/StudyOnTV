@@ -1,6 +1,6 @@
-// 生成 update.json：GitHub API 不可用时，客户端会通过 raw.githubusercontent / jsDelivr / 加速镜像读取它。
+// 为当前仓库 Release 的附件生成 update.json 清单；客户端通过 GitHub Release API 检查更新。
 // 用法：node scripts/make-update-manifest.mjs [APK 所在目录，默认 release-artifacts] [--notes "更新说明"] [--force]
-// 生成后把 update.json 和 Release 一起提交到 main 分支（jsDelivr 缓存最长约 12 小时）。
+// 清单可作为 Release 附件保存，不需要提交到 main 分支。
 import {createHash} from 'node:crypto';
 import {readFileSync,readdirSync,writeFileSync,statSync} from 'node:fs';
 import {join,resolve,dirname} from 'node:path';
@@ -18,7 +18,7 @@ const versionCode=Number(gradle.match(/versionCode\s*=\s*(\d+)/)?.[1]);
 if(!version)throw new Error('build.gradle.kts 里找不到 versionName');
 const files=readdirSync(dir).filter(f=>f.endsWith(`-v${version}.apk`));
 const pick=marker=>files.find(f=>f.includes(marker));
-const asset=name=>{if(!name)return undefined;const path=join(dir,name);return{name,url:`https://github.com/chadyi/StudyOnTV/releases/download/v${version}/${name}`,sha256:createHash('sha256').update(readFileSync(path)).digest('hex'),size:statSync(path).size};};
+const asset=name=>{if(!name)return undefined;const path=join(dir,name);return{name,url:`https://github.com/scstc/StudyOnTV/releases/download/v${version}/${name}`,sha256:createHash('sha256').update(readFileSync(path)).digest('hex'),size:statSync(path).size};};
 const assets={tv:asset(pick('-TV-')),mobile:asset(pick('-Mobile-'))};
 if(!assets.tv&&!assets.mobile)throw new Error(`${dir} 里没有 *-TV-v${version}.apk / *-Mobile-v${version}.apk`);
 const manifest={version,versionCode,force:force||notes.includes('[force]'),notes,publishedAt:new Date().toISOString(),assets};

@@ -1,64 +1,65 @@
 # 版本检查与更新提示
 
-客户端回到学习页时检查最新 Release，**有新版才提示**，结果缓存 6 小时。GitHub 不稳定时会自动换用其他来源（见下文「镜像与备用来源」）。
+客户端回到学习页时检查当前仓库 `scstc/StudyOnTV` 的最新正式 GitHub Release，**有新版才提示**，检查结果缓存 6 小时。家长管理面板「版本更新 → 检查更新」可以主动重新检查。不检查原仓库或蒲公英的版本。
 
 ```
-GET https://api.github.com/repos/chadyi/StudyOnTV/releases/latest
+GET https://api.github.com/repos/scstc/StudyOnTV/releases/latest
 ```
 
 | 字段 | 用途 |
 |---|---|
-| `tag_name` | 版本号，写成 `v1.2.3` |
-| `body` | 更新说明，直接显示在提示里；**含 `[force]` 就强制更新** |
-| `assets[].browser_download_url` | 有 `.apk` 就点「立即更新」直接下载，没有就打开 Release 页 |
+| `tag_name` | 带 `v` 前缀的版本号，例如 `v26.4.1.1` |
+| `body` | 更新说明，包含 `[force]` 时强制更新 |
+| `assets[].browser_download_url` | 对应 TV 或手机 / 平板的 APK 下载地址 |
+| `assets[].digest` | GitHub 提供的 `sha256:...` 文件摘要 |
+
+草稿和预发布版本不会推送给客户端。发版时需包含对应设备的 APK，下载地址必须属于当前仓库的 Release。
 
 ## 两种提示
 
 | 类型 | 触发 | 表现 |
 |---|---|---|
-| 强制更新 | `body` 里有 `[force]` | 全屏页，返回键无效，只能点「立即更新」 |
-| 普通更新 | 版本号更高但没有 `[force]` | 右上角小卡片，可关闭 |
+| 强制更新 | 版本号更高，且更新说明包含 `[force]` | 全屏页，返回键无效，需完成更新才能继续 |
+| 普通更新 | 版本号更高，且更新说明没有 `[force]` | 右上角小卡片，可关闭 |
 
 ## 发版流程
 
+### 分支与版本编号
+
+- 开发分支使用 `年.季度.该季度第几个分支`，年份取后两位，各序号从 1 开始。例如 `26.4.1` 表示 2026 年第 4 季度的第 1 个分支。
+- 发版版本使用 `当前分支.该分支第几次发版`。`26.4.1` 分支依次发布 `26.4.1.1`、`26.4.1.2`；新分支 `26.4.2` 从 `26.4.2.1` 开始。
+- `app/native/app/build.gradle.kts` 中的 `versionName` 使用上述四段版本号，Git 标签和 Release 使用 `v` 前缀，例如 `v26.4.1.1`。
+- Android `versionCode` 在所有正式版本之间保持递增，切换分支、季度或年份时不重置。本分支首版为 `versionName = "26.4.1.1"`、`versionCode = 27`；下一次发版两者分别改为 `26.4.1.2`、`28`。
+- TV 和手机 / 平板包共用同一次发版编号。每次发版前检查当前分支、已有标签与已发布的 APK，避免版本号重复或回退；这套编号目前由发版时手动维护。
+
+### 构建与发布
+
+在当前开发分支更新版本号后，构建并签名 TV、手机 / 平板正式包，分别命名为 `StudyOnTV-TV-v26.4.1.1.apk`、`StudyOnTV-Mobile-v26.4.1.1.apk`，放入 `release-artifacts`。将版本修改提交到当前分支并推送后，再发布：
+
 ```bash
-# 1. 改版本号（app/native/app/build.gradle.kts 里的 versionCode / versionName）
-# 2. 打包
-cd app/native && ./gradlew assembleDebug      # 或 assembleRelease（需签名）
-# 3. 发布
-gh release create v0.2.0 app/native/app/build/outputs/apk/debug/app-debug.apk \
-  --title "v0.2.0" \
-  --notes "· 新增题库导入导出
-· 修复锁屏偶发不弹的问题
-· 支持 100 以内加减法题库"
+gh release create v26.4.1.1 release-artifacts/StudyOnTV-TV-v26.4.1.1.apk release-artifacts/StudyOnTV-Mobile-v26.4.1.1.apk \
+  --repo scstc/StudyOnTV \
+  --target 26.4.1 \
+  --title "v26.4.1.1" \
+  --notes "本次更新说明"
 ```
 
-要强制更新时，在说明里加一行：
+GitHub Release 发布完成并设为 latest 后，客户端即可检测到新版本，无需上传蒲公英。
 
-```
-[force]
-本次必须更新
-```
+需要强制更新时，在 Release 说明中加入 `[force]`。发布后客户端再次检查时会看到提示；若已有检查缓存，可在管理面板手动检查。
 
-发布后客户端最长 6 小时内（或下次启动）就会看到提示。
+## 下载与安装
 
-## 镜像与备用来源
+当前客户端从本仓库 GitHub Release 下载对应设备的 APK。更新页的「手动下载」也指向 https://github.com/scstc/StudyOnTV/releases/latest。GitHub 网络不可用时可用手机或电脑下载，再通过 U 盘或 ADB 安装。
 
-部分网络访问 GitHub 不稳定，客户端按顺序尝试，第一个成功的为准：
+下载后检查包名、递增的 `versionCode` 和签名；若 GitHub 返回 SHA-256，也会校验文件摘要。不符合要求时拒绝安装。安装通过 Android 系统安装页面完成，需要用户确认，部分设备需要允许安装未知应用。
 
-1. 家长在管理面板「规则与设备 → 版本更新 → 高级」里填写的自定义地址（GitHub Release JSON 或 update.json 格式）
-2. GitHub Releases API
-3. 仓库 main 分支的 `update.json`：raw.githubusercontent.com → cdn / fastly / gcore.jsdelivr.net → 加速镜像
+首次迁移到本仓库版本需手动安装；原版 APK 的更新源不会因为本仓库发版而改变。若原版与本仓库的发布签名不同，无法直接覆盖安装。
 
-APK 下载依次尝试：上次成功的线路 → 直连 GitHub → 加速镜像（默认 gh-proxy.com、ghproxy.net、ghfast.top，可在面板修改）。
-镜像是第三方服务，所以下载后会校验 SHA-256（GitHub API 的 `digest` 或 update.json 中的 `sha256`），
-并要求 APK 签名与已安装版本一致，否则拒绝安装。
+### 可选的 update.json
 
-### 发版时生成 update.json
+仓库保留 `scripts/make-update-manifest.mjs`，可为 GitHub Release 生成含版本、下载地址和 SHA-256 的清单；当前客户端不读取这份清单。
 
 ```bash
 node scripts/make-update-manifest.mjs release-artifacts --notes "· 修复……"
-git add update.json && git commit -m "update.json v0.2.2"
 ```
-
-jsDelivr 对分支文件最多缓存约 12 小时；GitHub API 能访问时不受影响。

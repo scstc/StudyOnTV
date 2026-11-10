@@ -8,19 +8,13 @@ import java.net.HttpURLConnection
 import java.net.URL
 
 /**
- * 版本检查：只使用蒲公英应用内更新接口（appKey + 当前版本）。
- * 不再访问 GitHub 或第三方镜像；蒲公英失败时由更新页引导用户手动下载。
+ * 版本检查：跟随本仓库的最新正式 GitHub Release，按设备选择 APK。
  */
 object Updater {
-    const val OWNER_REPO = "chadyi/StudyOnTV"
+    const val OWNER_REPO = "scstc/StudyOnTV"
+    const val RELEASE_PAGE = "https://github.com/$OWNER_REPO/releases/latest"
+    const val USER_AGENT = "StudyOnTV-Updater"
     private const val GITHUB_API = "https://api.github.com/repos/$OWNER_REPO/releases/latest"
-    private const val MANIFEST_PATH = "$OWNER_REPO/main/update.json"
-    private val MANIFEST_URLS = listOf(
-        "https://raw.githubusercontent.com/$MANIFEST_PATH",
-        "https://cdn.jsdelivr.net/gh/$OWNER_REPO@main/update.json",
-        "https://fastly.jsdelivr.net/gh/$OWNER_REPO@main/update.json",
-        "https://gcore.jsdelivr.net/gh/$OWNER_REPO@main/update.json"
-    )
     /** 公益 GitHub 加速镜像，随时可能失效；家长可在管理面板中修改 */
     val DEFAULT_MIRRORS = emptyList<String>()
     private const val CACHE_MS = 6L * 60 * 60 * 1000
@@ -35,7 +29,7 @@ object Updater {
         val source: String = ""
     )
 
-    fun api(ctx: Context): String = Prefs.updateApi(ctx)
+    fun api(ctx: Context): String = GITHUB_API
 
     fun mirrors(ctx: Context): List<String> {
         val saved = Prefs.updateMirrors(ctx) ?: return DEFAULT_MIRRORS
@@ -43,9 +37,9 @@ object Updater {
             .map { if (it.endsWith("/")) it else "$it/" }.distinct()
     }
 
-    /** 可用的 APK 下载地址：上次成功的线路优先，其次直连，再其次各个镜像 */
+    /** 只下载本仓库 Release 中选定的 APK。 */
     fun downloadCandidates(ctx: Context, url: String): List<Pair<String, String>> =
-        listOf("蒲公英" to url)
+        listOf("GitHub" to url)
 
     fun check(ctx: Context, forceRefresh: Boolean = false, onResult: (Info?) -> Unit) {
         val cachedAt = Prefs.updateCheckedAt(ctx)
@@ -74,12 +68,14 @@ object Updater {
         val started = System.currentTimeMillis()
         var info: Info? = null
         try {
-            info = Pgyer.info(ctx, current, currentVersionCode(ctx))
-            log.put(JSONObject().put("source", "蒲公英").put("ok", info != null).put("ms", System.currentTimeMillis() - started)
-                .put("message", if (info == null) "当前已是最新版本" else "v" + info.latest))
+            val release = fetch(GITHUB_API) ?: throw IllegalStateException("GitHub 返回了空响应")
+            info = parseRelease(release, current, "GitHub")
+                ?: throw IllegalStateException("最新正式发行版缺少对应设备的 APK")
+            log.put(JSONObject().put("source", "GitHub").put("ok", true).put("ms", System.currentTimeMillis() - started)
+                .put("message", if (isNewer(info.latest, current)) "v" + info.latest else "当前已是最新版本"))
         } catch (e: Exception) {
-            Diag.error("Update", "Pgyer check failed", e)
-            log.put(JSONObject().put("source", "蒲公英").put("ok", false).put("ms", System.currentTimeMillis() - started)
+            Diag.error("Update", "GitHub check failed", e)
+            log.put(JSONObject().put("source", "GitHub").put("ok", false).put("ms", System.currentTimeMillis() - started)
                 .put("message", e.message?.take(160) ?: e.javaClass.simpleName))
         }
         Prefs.setUpdateInfo(ctx, info?.let { toJson(it).toString() } ?: "")
@@ -97,6 +93,7 @@ object Updater {
         if (raw.isEmpty()) return null
         return try {
             val o = JSONObject(raw)
+            if (!o.optString("url").startsWith("https://github.com/$OWNER_REPO/releases/download/")) return null
             Info(o.optString("latest"), o.optString("current"), o.optBoolean("force"),
                 o.optString("notes"), o.optString("url"), o.optString("sha256"), o.optString("source"))
         } catch (e: Exception) {
@@ -108,7 +105,7 @@ object Updater {
         val conn = URL(endpoint).openConnection() as HttpURLConnection
         conn.connectTimeout = 5000
         conn.readTimeout = 6000
-        conn.setRequestProperty("User-Agent", "StudyOnTV-Updater")
+        conn.setRequestProperty("User-Agent", USER_AGENT)
         conn.setRequestProperty("Accept", "application/vnd.github+json, application/json")
         return try {
             val code = conn.responseCode
@@ -126,15 +123,17 @@ object Updater {
     private fun parse(data: JSONObject, current: String, source: String): Info? =
         if (data.has("tag_name")) parseRelease(data, current, source) else parseManifest(data, current, source)
 
-    private fun parseRelease(release: JSONObject, current: String, source: String): Info? {
+    internal fun parseRelease(release: JSONObject, current: String, source: String): Info? {
+        if (release.optBoolean("draft") || release.optBoolean("prerelease")) return null
         val tag = release.optString("tag_name").removePrefix("v").trim()
-        if (tag.isEmpty()) return null
+        if (!tag.matches(Regex("[0-9]+(?:\\.[0-9]+)+"))) return null
         val body = release.optString("body")
         val assets = release.optJSONArray("assets")
         val candidates = (0 until (assets?.length() ?: 0)).map { assets!!.getJSONObject(it) }
         val selected = candidates.firstOrNull { it.optString("name").contains(flavorMarker, true) && it.optString("name").endsWith(".apk", true) }
             ?: if (BuildConfig.FLAVOR == "tv") candidates.firstOrNull { it.optString("name").matches(Regex("StudyOnTV-v[0-9.]+\\.apk")) } else null
         val url = selected?.optString("browser_download_url")?.takeIf { it.isNotEmpty() } ?: return null
+        if (!url.startsWith("https://github.com/$OWNER_REPO/releases/download/v$tag/")) return null
         // GitHub 会给 Release 附件计算 digest（sha256:...），用于校验镜像下载的文件
         val digest = selected.optString("digest").takeIf { it.startsWith("sha256:", true) }?.substring(7).orEmpty()
         val force = body.contains("[force]", true) || body.contains("force update", true)
